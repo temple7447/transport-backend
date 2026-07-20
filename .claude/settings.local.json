@@ -10,7 +10,14 @@
       "Bash(node -e \"require\\('./src/services/email.templates'\\); require\\('./src/services/email.service'\\); require\\('./src/controllers/admin.controller'\\); console.log\\('All modules loaded OK'\\)\")",
       "Bash(node -e \"require\\('dotenv'\\).config\\(\\); require\\('./src/services/email.templates'\\); require\\('./src/services/email.service'\\); require\\('./src/controllers/admin.controller'\\); console.log\\('All modules loaded OK'\\)\")",
       "Bash(node -e \"require\\('dotenv'\\).config\\(\\); require\\('./src/services/email.templates'\\); require\\('./src/services/email.service'\\); require\\('./src/controllers/subscribe.controller'\\); console.log\\('All modules loaded OK'\\)\")",
-      "Bash(node scripts/test-email.js)"
+      "Bash(node scripts/test-email.js)",
+      "Bash(git push *)",
+      "Bash(node -e \"require\\('pdfkit'\\); console.log\\('pdfkit OK'\\)\")",
+      "Bash(node -e \"require\\('dotenv'\\).config\\(\\); require\\('./src/routes/document.routes'\\); console.log\\('document routes OK'\\)\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(node -e \"const doc = require\\('pdfkit'\\); const d = new doc\\(\\); console.log\\(typeof d.characterSpacing\\)\")",
+      "Bash(node scripts/test-shipment-docs-email.js)"
     ]
   }
 }
