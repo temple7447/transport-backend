@@ -23,6 +23,8 @@ const eventSchema = new mongoose.Schema(
     time: { type: String },
     date: { type: String },
     location: { type: String },
+    lat: { type: Number, min: -90, max: 90 },
+    lng: { type: Number, min: -180, max: 180 },
     desc: { type: String, required: true },
     type: { type: String, enum: EVENT_TYPES, default: 'info' },
   },

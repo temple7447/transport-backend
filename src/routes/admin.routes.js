@@ -55,13 +55,20 @@ router.post(
   param('id').isMongoId(),
   body('desc').trim().notEmpty().withMessage('Event description is required'),
   body('type').optional().isIn(['pickup', 'transit', 'delivery', 'exception', 'info']),
+  body('lat').optional({ nullable: true }).isFloat({ min: -90, max: 90 }),
+  body('lng').optional({ nullable: true }).isFloat({ min: -180, max: 180 }),
   validate,
   adminController.addEvent
 );
 
 router.patch(
   '/shipments/:id/events/:eventId',
-  [param('id').isMongoId(), param('eventId').isMongoId()],
+  [
+    param('id').isMongoId(),
+    param('eventId').isMongoId(),
+    body('lat').optional({ nullable: true }).isFloat({ min: -90, max: 90 }),
+    body('lng').optional({ nullable: true }).isFloat({ min: -180, max: 180 }),
+  ],
   validate,
   adminController.updateEvent
 );

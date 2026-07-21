@@ -114,15 +114,22 @@ exports.updateShipment = asyncHandler(async (req, res, next) => {
 
   if (!shipment) return next(new AppError('Shipment not found', 404));
 
-  // Fire alert email if recipient has an email and status changed to a notifiable state
+  // Send the status alert email inline so the admin gets real confirmation
+  // (previously fire-and-forget — failures only ever reached a server log)
+  let notified = false;
+  let notifyError;
   const newStatus = req.body.status;
   if (newStatus && STATUS_EMAIL_MAP[newStatus] && shipment.recipient?.email) {
-    STATUS_EMAIL_MAP[newStatus](shipment).catch((err) =>
-      logger.warn(`Status alert email failed [${newStatus}]: ${err.message}`)
-    );
+    try {
+      await STATUS_EMAIL_MAP[newStatus](shipment);
+      notified = true;
+    } catch (err) {
+      logger.warn(`Status alert email failed [${newStatus}]: ${err.message}`);
+      notifyError = err.message;
+    }
   }
 
-  res.json({ status: 'success', data: { shipment } });
+  res.json({ status: 'success', data: { shipment, notified, notifyError } });
 });
 
 // ─── Delete Shipment ─────────────────────────────────────────────────────────
@@ -141,44 +148,50 @@ exports.deleteShipment = asyncHandler(async (req, res, next) => {
 // ─── Add Tracking Event ───────────────────────────────────────────────────────
 
 exports.addEvent = asyncHandler(async (req, res, next) => {
-  const { time, date, location, desc, type } = req.body;
+  const { time, date, location, lat, lng, desc, type } = req.body;
   if (!desc) return next(new AppError('Event description is required', 400));
 
   const shipment = await Shipment.findOneAndUpdate(
     { _id: req.params.id, isDeleted: false },
-    { $push: { events: { time, date, location, desc, type } } },
+    { $push: { events: { time, date, location, lat, lng, desc, type } } },
     { returnDocument: 'after' }
   );
 
   if (!shipment) return next(new AppError('Shipment not found', 404));
   const newEvent = shipment.events[shipment.events.length - 1];
 
-  // Delay alert — send when an exception event is added
-  if (type === 'exception' && shipment.recipient?.email) {
-    emailService.sendDelayAlert(shipment, newEvent).catch((err) =>
-      logger.warn(`Delay alert email failed: ${err.message}`)
-    );
+  let notified = false;
+  let notifyError;
+  try {
+    // Delay alert — send when an exception event is added
+    if (type === 'exception' && shipment.recipient?.email) {
+      await emailService.sendDelayAlert(shipment, newEvent);
+      notified = true;
+    }
+    // In-transit update — send when a transit event is added
+    if (type === 'transit' && shipment.recipient?.email) {
+      await emailService.sendInTransitAlert(shipment, location);
+      notified = true;
+    }
+  } catch (err) {
+    logger.warn(`Event alert email failed [${type}]: ${err.message}`);
+    notifyError = err.message;
   }
 
-  // In-transit update — send when a transit event is added
-  if (type === 'transit' && shipment.recipient?.email) {
-    emailService.sendInTransitAlert(shipment, location).catch((err) =>
-      logger.warn(`In-transit alert email failed: ${err.message}`)
-    );
-  }
-
-  res.status(201).json({ status: 'success', data: { event: newEvent, shipment } });
+  res.status(201).json({ status: 'success', data: { event: newEvent, shipment, notified, notifyError } });
 });
 
 // ─── Edit Tracking Event ──────────────────────────────────────────────────────
 
 exports.updateEvent = asyncHandler(async (req, res, next) => {
-  const { time, date, location, desc, type } = req.body;
+  const { time, date, location, lat, lng, desc, type } = req.body;
   const { id, eventId } = req.params;
 
   const update = {};
   if (desc !== undefined)     update['events.$.desc']     = desc;
   if (location !== undefined) update['events.$.location'] = location;
+  if (lat !== undefined)      update['events.$.lat']      = lat;
+  if (lng !== undefined)      update['events.$.lng']      = lng;
   if (date !== undefined)     update['events.$.date']     = date;
   if (time !== undefined)     update['events.$.time']     = time;
   if (type !== undefined)     update['events.$.type']     = type;
