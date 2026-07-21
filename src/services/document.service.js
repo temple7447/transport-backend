@@ -20,6 +20,10 @@ const ML = 45;     // margin left
 const MR = 45;     // margin right
 const CW = PW - ML - MR; // content width
 
+function fmtMoney(n) {
+  return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 // ─── Core helpers ────────────────────────────────────────────────────────────
 
 function createDoc(res, filename) {
@@ -169,7 +173,7 @@ function drawAWB(doc, shipment) {
     : '—';
   drawField(doc, ML + 8 + (qw + 8) * 2, y, qw, 'Dimensions (cm)', dims);
   drawField(doc, ML + 8 + (qw + 8) * 3, y, qw, 'Declared Value',
-    shipment.declaredValue ? `$${Number(shipment.declaredValue).toFixed(2)}` : '—');
+    shipment.declaredValue ? `$${fmtMoney(shipment.declaredValue)}` : '—');
   doc.rect(ML, y - 4, CW, 38).strokeColor(C.border).lineWidth(0.5).stroke();
   y += 42;
 
@@ -238,13 +242,16 @@ function drawInvoice(doc, shipment) {
   y = drawSectionBar(doc, y, 'Line Items');
   y += 2;
 
-  // Table header row
-  const cols = [ML + 8, ML + 210, ML + 310, ML + 390, ML + 465];
+  // Table header row — HS Code/Qty stay narrow since their content is always
+  // short ("—"/"1"), leaving enough room for Unit Value/Total to hold large
+  // declared values (e.g. "$123,456,789.99") without wrapping to a 2nd line.
+  const cols = [ML + 8, ML + 205, ML + 260, ML + 300, ML + 400];
   const hdrs = ['Description of Goods', 'HS Code', 'Qty', 'Unit Value (USD)', 'Total (USD)'];
   doc.rect(ML, y, CW, 20).fill(C.navyLt);
   hdrs.forEach((h, i) => {
+    const w = i < hdrs.length - 1 ? cols[i+1] - cols[i] - 4 : ML + CW - cols[i] - 8;
     doc.fillColor(C.white).font('Helvetica-Bold').fontSize(7.5)
-      .text(h, cols[i], y + 6, { width: i < hdrs.length - 1 ? cols[i+1] - cols[i] - 4 : 60 });
+      .text(h, cols[i], y + 6, { width: w });
   });
   y += 20;
 
@@ -252,11 +259,11 @@ function drawInvoice(doc, shipment) {
   const unitVal = shipment.declaredValue || 0;
   doc.rect(ML, y, CW, 24).fill(C.white).strokeColor(C.border).lineWidth(0.5).stroke();
   doc.fillColor(C.text).font('Helvetica').fontSize(8.5)
-    .text(shipment.contents || 'General Cargo', cols[0], y + 7, { width: 196 });
+    .text(shipment.contents || 'General Cargo', cols[0], y + 7, { width: 190 });
   doc.text('—',                       cols[1], y + 7);
   doc.text('1',                        cols[2], y + 7);
-  doc.text(`$${unitVal.toFixed(2)}`,   cols[3], y + 7);
-  doc.text(`$${unitVal.toFixed(2)}`,   cols[4], y + 7);
+  doc.text(`$${fmtMoney(unitVal)}`,    cols[3], y + 7, { width: cols[4] - cols[3] - 4 });
+  doc.text(`$${fmtMoney(unitVal)}`,    cols[4], y + 7, { width: ML + CW - cols[4] - 8 });
   y += 24;
 
   // Total row
@@ -264,7 +271,7 @@ function drawInvoice(doc, shipment) {
   doc.fillColor(C.amber).font('Helvetica-Bold').fontSize(9)
     .text('TOTAL DECLARED VALUE', cols[0], y + 9);
   doc.fillColor(C.white).font('Helvetica-Bold').fontSize(13)
-    .text(`USD $${unitVal.toFixed(2)}`, 0, y + 7, { align: 'right', width: PW - MR - 8 });
+    .text(`USD $${fmtMoney(unitVal)}`, 0, y + 7, { align: 'right', width: PW - MR - 8 });
   y += 36;
 
   // ── Customs info ──
@@ -326,12 +333,13 @@ function drawPackingList(doc, shipment) {
   y = drawSectionBar(doc, y, 'Package Contents');
   y += 2;
 
-  const pcols = [ML + 8, ML + 155, ML + 265, ML + 340, ML + 415, ML + 490];
+  const pcols = [ML + 8, ML + 155, ML + 265, ML + 310, ML + 375, ML + 450];
   const phdrs = ['Description', 'Contents', 'Qty', 'Weight (kg)', 'L × W × H (cm)', 'Condition'];
   doc.rect(ML, y, CW, 20).fill(C.navyLt);
   phdrs.forEach((h, i) => {
+    const w = i < phdrs.length - 1 ? pcols[i+1] - pcols[i] - 4 : ML + CW - pcols[i] - 8;
     doc.fillColor(C.white).font('Helvetica-Bold').fontSize(7.5)
-      .text(h, pcols[i], y + 6, { width: i < phdrs.length - 1 ? pcols[i+1] - pcols[i] - 4 : 55 });
+      .text(h, pcols[i], y + 6, { width: w });
   });
   y += 20;
 

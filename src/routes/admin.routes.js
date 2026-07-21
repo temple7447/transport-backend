@@ -10,6 +10,9 @@ router.use(authenticate);
 // Stats
 router.get('/stats', adminController.getStats);
 
+// Geocode (used by the timeline event forms to resolve a location to lat/lng)
+router.get('/geocode', adminController.geocode);
+
 // Shipments
 router.get('/shipments', adminController.getShipments);
 

@@ -221,3 +221,28 @@ exports.deleteEvent = asyncHandler(async (req, res, next) => {
   if (!shipment) return next(new AppError('Shipment not found', 404));
   res.json({ status: 'success', data: { shipment } });
 });
+
+// ─── Geocode a free-text location ─────────────────────────────────────────────
+// Proxies OpenStreetMap's Nominatim so the admin never has to know or look up
+// a lat/lng themselves — this must run server-side because Nominatim does not
+// send CORS headers, so a direct browser fetch is blocked outright.
+
+exports.geocode = asyncHandler(async (req, res, next) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return next(new AppError('Query parameter "q" is required', 400));
+
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
+  const response = await fetch(url, {
+    headers: { 'User-Agent': 'Accessiblexpress-Admin/1.0 (logistics tracking dashboard)' },
+  });
+
+  if (!response.ok) {
+    logger.warn('Geocode lookup failed', { q, status: response.status });
+    return res.json({ status: 'success', data: { result: null } });
+  }
+
+  const results = await response.json();
+  const match = results?.[0];
+  const result = match ? { lat: parseFloat(match.lat), lng: parseFloat(match.lon) } : null;
+  res.json({ status: 'success', data: { result } });
+});
